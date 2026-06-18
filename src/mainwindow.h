@@ -8,8 +8,15 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QColor>
-
+#include <QGraphicsScene>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsLineItem>
+#include <QGraphicsTextItem>
+#include <cmath>
+#include <unordered_map>
 #include "datastructures.h"
+
+class QSpinBox;
 
 // Forward-declare kelas Ui yang di-generate oleh uic dari mainwindow.ui
 QT_BEGIN_NAMESPACE
@@ -37,12 +44,28 @@ private:
     AVLTree*           menuAVL;
     MenuHashTable*     menuHash;
     TableGraph*        tableGraph;
+    RecommendationGraph* menuRecGraph;
     ActionStack*       actionStack;
     InventarisLinkedList* inventarisList;
     TransaksiList*        transaksiList;
 
     int nextMenuId;
     int nextStaffId;
+
+    // ---- Staff Carousel State ----
+    QStringList roleList;
+    int currentRoleIndex = 0;
+    QLabel* lblCurrentRole = nullptr;
+    std::unordered_map<std::string, int> roleQuotas;
+    QSpinBox* spinQuota = nullptr;
+    QSpinBox* spinMenuStock = nullptr; // Untuk Stok Menu
+
+    // ---- Graph Visualization ----
+    QGraphicsScene* graphScene;
+    QTimer*         animationTimer;
+    std::vector<int> graphTraversalSequence;
+    int             graphAnimationStep;
+    void drawGraph(int step);
 
     // Current order being built
     Order*                 currentOrder;
@@ -53,6 +76,8 @@ private:
     void setupConnections();   // Semua signal-slot connect di sini (ganti setupUI)
     void setupInitialData();
     void applyStyleSheet();
+    void replaceEmojisWithGoogleIcons();
+    QIcon getMaterialIcon(const QString& name, QColor color = Qt::white);
     void setupCreditTab();
 
     // ---- Refresh / Display ----
@@ -110,11 +135,15 @@ private slots:
     void onFreeTable();
     void onRunBFS();
     void onRunDFS();
+    void onZoomIn();
+    void onZoomOut();
 
     // Staff
     void onAddStaff();
     void onRemoveStaff();
     void onRotateShift();
+    void onCarouselLeft();
+    void onCarouselRight();
 
     // History & Report
     void onUndoAction();
@@ -140,8 +169,12 @@ private slots:
     void onGenerateLapKeu();
     void onSimpanLapKeu();
 
-    // Timer
+    // Timer & Animation
     void updateClock();
+    void onAnimateGraphStep();
+
+    // Rekomendasi Menu
+    void onShowRecommendations();
 };
 
 #endif // MAINWINDOW_H

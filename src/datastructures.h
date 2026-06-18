@@ -27,13 +27,13 @@ struct MenuItem {
     std::string name;
     std::string category;
     double price;
-    bool available;
+    int stock;
     MenuItem* next;   // untuk Linked List
 
     // Default argument (syarat 6)
     MenuItem(int i = 0, std::string n = "", std::string c = "Umum",
-             double p = 0.0, bool a = true)
-        : id(i), name(n), category(c), price(p), available(a), next(nullptr) {}
+             double p = 0.0, int s = 10)
+        : id(i), name(n), category(c), price(p), stock(s), next(nullptr) {}
 };
 
 struct OrderItem {
@@ -168,7 +168,7 @@ public:
     void insert(const MenuItem& item) {
         MenuItem* node = new MenuItem(item.id, item.name,
                                       item.category, item.price,
-                                      item.available);
+                                      item.stock);
         if (!head) {
             head = node;
         } else {
@@ -314,10 +314,42 @@ private:
     Staff* head;
     Staff* tail;
     Staff* onDuty;
-    int size;
+    int size;    void ensureActivePerRole() {
+        if (!head) return;
+        std::vector<std::string> uniqueRoles;
+        Staff* curr = head;
+        do {
+            bool found = false;
+            for (const auto& r : uniqueRoles) {
+                if (r == curr->role) { found = true; break; }
+            }
+            if (!found) uniqueRoles.push_back(curr->role);
+            curr = curr->next;
+        } while (curr != head);
+
+        for (const auto& r : uniqueRoles) {
+            bool hasActive = false;
+            curr = head;
+            do {
+                if (curr->role == r && curr->onDuty) hasActive = true;
+                curr = curr->next;
+            } while (curr != head);
+
+            if (!hasActive) {
+                curr = head;
+                do {
+                    if (curr->role == r) {
+                        curr->onDuty = true;
+                        break;
+                    }
+                    curr = curr->next;
+                } while (curr != head);
+            }
+        }
+    }
 
 public:
-    StaffCircularList() : head(nullptr), tail(nullptr), onDuty(nullptr), size(0) {}
+    StaffCircularList() : head(nullptr), tail(nullptr), size(0) {}
 
     ~StaffCircularList() {
         if (!head) return;
@@ -334,42 +366,35 @@ public:
         if (!head) {
             head = tail = node;
             node->next = head;
-            onDuty = head;
         } else {
             tail->next = node;
             tail = node;
             tail->next = head;
         }
         size++;
+        ensureActivePerRole();
     }
 
     bool remove(int staffId) {
         if (!head) return false;
 
-        // Kasus: hanya 1 node
         if (head == tail && head->staffId == staffId) {
-            if (onDuty == head) onDuty = nullptr;
             delete head;
             head = tail = nullptr;
             size--;
             return true;
         }
 
-        // Cari node dengan traversal circular
         Staff* prev = tail;
         Staff* curr = head;
         do {
             if (curr->staffId == staffId) {
-                // Jika yang dihapus sedang bertugas, geser onDuty ke berikutnya
-                if (onDuty == curr) {
-                    onDuty = curr->next;
-                    if (onDuty) onDuty->onDuty = true;
-                }
                 if (curr == head) head = curr->next;
                 if (curr == tail) tail = prev;
                 prev->next = curr->next;
                 delete curr;
                 size--;
+                ensureActivePerRole();
                 return true;
             }
             prev = curr;
@@ -379,14 +404,87 @@ public:
         return false;
     }
 
-    Staff* rotateShift() {
-        if (!onDuty) return nullptr;
-        onDuty->onDuty = false;
-        onDuty = onDuty->next;
-        onDuty->onDuty = true;
-        return onDuty;
-    }
+    Staff* rotateShiftByRole(const std::string& roleToRotate, int maxOnDuty = 1) {
+        if (!head) return nullptr;
 
+        // KASUS 1: Semua Jabatan (Rotasi Serentak Semua Departemen)
+        if (roleToRotate == "Semua Jabatan" || roleToRotate == "Semua") {
+            std::vector<std::string> uniqueRoles;
+            Staff* curr = head;
+            do {
+                bool found = false;
+                for (const auto& r : uniqueRoles) {
+                    if (r == curr->role) { found = true; break; }
+                }
+                if (!found) uniqueRoles.push_back(curr->role);
+                curr = curr->next;
+            } while (curr != head);
+
+            for (const auto& r : uniqueRoles) {
+                rotateShiftByRole(r, maxOnDuty);
+            }
+            return head;
+        }
+
+        // KASUS 2: Spesifik Jabatan
+        Staff* curr = head;
+        Staff* firstActiveRole = nullptr;
+        int roleCount = 0;
+        bool wasAnyActive = false;
+
+        do {
+            if (curr->role == roleToRotate) {
+                roleCount++;
+                if (curr->onDuty) {
+                    wasAnyActive = true;
+                    if (!firstActiveRole) firstActiveRole = curr;
+                }
+            }
+            curr = curr->next;
+        } while (curr != head);
+
+        if (!firstActiveRole) {
+            curr = head;
+            do {
+                if (curr->role == roleToRotate) {
+                    firstActiveRole = curr;
+                    break;
+                }
+                curr = curr->next;
+            } while (curr != head);
+        }
+
+        if (!firstActiveRole) return nullptr;
+
+        curr = head;
+        do {
+            if (curr->role == roleToRotate) curr->onDuty = false;
+            curr = curr->next;
+        } while (curr != head);
+
+        Staff* nextActive = firstActiveRole;
+        
+        if (wasAnyActive) {
+            int shiftCount = (roleCount > maxOnDuty) ? maxOnDuty : 1;
+            for (int i = 0; i < shiftCount; i++) {
+                do {
+                    nextActive = nextActive->next;
+                } while (nextActive->role != roleToRotate);
+            }
+        }
+
+        Staff* temp = nextActive;
+        int activated = 0;
+        do {
+            if (temp->role == roleToRotate) {
+                temp->onDuty = true;
+                activated++;
+            }
+            temp = temp->next;
+        } while (temp != nextActive && activated < maxOnDuty && activated < roleCount);
+
+        return nextActive;
+    }
     std::vector<Staff*> getAll() const {
         std::vector<Staff*> result;
         if (!head) return result;
@@ -398,7 +496,6 @@ public:
         return result;
     }
 
-    Staff* getOnDuty() const { return onDuty; }
     int getSize() const { return size; }
 };
 
@@ -665,6 +762,40 @@ public:
 // ============================================================
 //  6. GRAPH (BFS & DFS) — Relasi / Layout Meja Restoran
 // ============================================================
+// ============================================================
+//  GRAPH UNTUK REKOMENDASI MENU (Data Structure)
+// ============================================================
+class RecommendationGraph {
+private:
+    std::unordered_map<std::string, std::unordered_map<std::string, int>> adjList;
+
+public:
+    void addTransaction(const std::vector<std::string>& items) {
+        for (size_t i = 0; i < items.size(); ++i) {
+            for (size_t j = i + 1; j < items.size(); ++j) {
+                if (items[i] != items[j]) {
+                    adjList[items[i]][items[j]]++;
+                    adjList[items[j]][items[i]]++;
+                }
+            }
+        }
+    }
+
+    std::vector<std::pair<std::string, int>> getRecommendations(const std::string& item) {
+        std::vector<std::pair<std::string, int>> recs;
+        if (adjList.find(item) == adjList.end()) return recs;
+
+        for (const auto& pair : adjList[item]) {
+            recs.push_back({pair.first, pair.second});
+        }
+        // Sort descending by frequency
+        std::sort(recs.begin(), recs.end(), [](const auto& a, const auto& b) {
+            return a.second > b.second;
+        });
+        return recs;
+    }
+};
+
 class TableGraph {
 private:
     std::unordered_map<int, std::vector<int>> adjList;
@@ -866,7 +997,7 @@ inline std::string displayItem(const MenuItem& m) {
     return "[MENU #" + std::to_string(m.id) + "] "
          + m.name + " | " + m.category
          + " | Rp" + std::to_string((int)m.price)
-         + (m.available ? " | TERSEDIA" : " | HABIS");
+         + " | Stok: " + std::to_string(m.stock);
 }
 
 // Overload 2: menampilkan info Order ke string
@@ -957,7 +1088,7 @@ namespace STLUtils {
     // [STL COUNT] Hitung berapa menu yang tersedia (available == true) menggunakan std::count_if
     inline int countAvailableMenus(const std::vector<MenuItem*>& menus) {
         return (int)std::count_if(menus.begin(), menus.end(),
-            [](MenuItem* m) { return m && m->available; });
+            [](MenuItem* m) { return m && m->stock > 0; });
     }
 
     // [STL COUNT] Hitung meja yang sedang terisi menggunakan std::count_if
@@ -1160,7 +1291,7 @@ namespace FileIO {
         ofs << "=== DATA MENU RESTORAN ===\n";
         for (const auto& m : menus) {
             ofs << m.id << "|" << m.name << "|" << m.category
-                << "|" << m.price << "|" << (m.available ? "1" : "0") << "\n";
+                << "|" << m.price << "|" << m.stock << "\n";
         }
         ofs.close();
         return true;
@@ -1179,7 +1310,7 @@ namespace FileIO {
             while (std::getline(ss, tok, '|')) parts.push_back(tok);
             if (parts.size() >= 5) {
                 MenuItem m(std::stoi(parts[0]), parts[1], parts[2],
-                           std::stod(parts[3]), parts[4] == "1");
+                           std::stod(parts[3]), std::stoi(parts[4]));
                 result.push_back(m);
             }
         }
