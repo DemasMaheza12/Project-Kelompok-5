@@ -2337,7 +2337,7 @@ void MainWindow::onHapusStok()
     if (reply != QMessageBox::Yes) return;
 
     menuList->remove(id);
-    menuTree->remove(id); // Keep AVL tree in sync
+    //menuTree->remove(id); // Keep AVL tree in sync
     actionStack->push(Action("remove_menu", "Hapus menu: " + nama.toStdString(), id));
 
     QString logMsg = QString("🗑 Menu dihapus: %1").arg(nama);
