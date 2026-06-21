@@ -293,50 +293,9 @@ MainWindow::MainWindow(QWidget *parent)
   refreshMenuTable(); // Populate combobox now that it's created
 
   // --- STAFF CAROUSEL INJECTION ---
-  if (ui->filterStaffRole) {
-    ui->filterStaffRole->hide();
-    roleList << "Semua Jabatan"
-             << "Koki"
-             << "Kasir"
-             << "Waiter"
-             << "Manajer";
-    currentRoleIndex = 0;
-
-    QWidget *carouselWidget = new QWidget();
-    QHBoxLayout *carouselLayout = new QHBoxLayout(carouselWidget);
-    carouselLayout->setContentsMargins(0, 0, 0, 0);
-
-    QPushButton *btnPrevRole = new QPushButton("◄");
-    btnPrevRole->setStyleSheet(
-        "font-weight: 900; font-size: 24px; padding: 0px 10px; color: #1e3a8a; "
-        "border: none; background: transparent;");
-    lblCurrentRole =
-        new QLabel("JABATAN: " + roleList[currentRoleIndex].toUpper());
-    lblCurrentRole->setAlignment(Qt::AlignCenter);
-    lblCurrentRole->setStyleSheet("font-weight: bold; font-size: 14px;");
-    QPushButton *btnNextRole = new QPushButton("►");
-    btnNextRole->setStyleSheet(
-        "font-weight: 900; font-size: 24px; padding: 0px 10px; color: #1e3a8a; "
-        "border: none; background: transparent;");
-
-    carouselLayout->addWidget(btnPrevRole);
-    carouselLayout->addWidget(lblCurrentRole);
-    carouselLayout->addWidget(btnNextRole);
-
-    // Cari layout asli dari .ui dan masukkan carousel
-    if (QLayout *layout =
-            ui->filterStaffRole->parentWidget()->findChild<QLayout *>(
-                "staffFilterLayout")) {
-      if (auto boxLayout = qobject_cast<QBoxLayout *>(layout)) {
-        boxLayout->insertWidget(boxLayout->indexOf(ui->filterStaffRole),
-                                carouselWidget);
-      }
+    if (ui->filterStaffRole) {
+    roleList << "Semua Jabatan" << "Koki" << "Kasir" << "Waiter" << "Manajer";
     }
-    connect(btnPrevRole, &QPushButton::clicked, this,
-            &MainWindow::onCarouselLeft);
-    connect(btnNextRole, &QPushButton::clicked, this,
-            &MainWindow::onCarouselRight);
-  }
 
   // Pindahkan tombol Simpan/Muat File ke layout horizontal di panel kiri (tepat
   // di bawah Hapus Menu)
@@ -524,21 +483,19 @@ void MainWindow::setupConnections() {
     }
   }
 
-  connect(spinQuota, QOverload<int>::of(&QSpinBox::valueChanged),
-          [this](int value) {
-            if (roleList.isEmpty() || currentRoleIndex < 0 ||
-                currentRoleIndex >= roleList.size())
-              return;
-            QString role = roleList[currentRoleIndex];
+    connect(spinQuota, QOverload<int>::of(&QSpinBox::valueChanged),
+            [this](int value) {
+            QString role = ui->filterStaffRole->currentText();
+            if (role.isEmpty()) return;
 
             std::string roleStr = role.toStdString();
             roleQuotas[roleStr] = value;
 
             if (staffList->getSize() > 0) {
-              staffList->rotateShiftByRole(roleStr, value);
-              refreshStaffTable();
+                staffList->rotateShiftByRole(roleStr, value);
+                refreshStaffTable();
             }
-          });
+            });
 
   connect(ui->filterStaffRole,
           QOverload<int>::of(&QComboBox::currentIndexChanged), this,
@@ -1331,79 +1288,56 @@ void MainWindow::refreshTableDisplay() {
 void MainWindow::refreshStaffTable() {
   auto allStaffs = staffList->getAll();
 
-  // Perbarui daftar jabatan di Carousel secara dinamis, tapi pertahankan
-  // jabatan standar
   QStringList newRoleList;
-  newRoleList << "Semua Jabatan"
-              << "Koki"
-              << "Kasir"
-              << "Waiter"
-              << "Manager"
-              << "Cleaning";
-
+  newRoleList << "Semua Jabatan" << "Koki" << "Kasir" << "Waiter" << "Manager" << "Cleaning";
   for (Staff *s : allStaffs) {
     QString roleTitle = QString::fromStdString(s->role);
-    if (!newRoleList.contains(roleTitle, Qt::CaseInsensitive)) {
+    if (!newRoleList.contains(roleTitle, Qt::CaseInsensitive))
       newRoleList << roleTitle;
-    }
   }
 
-  QString currentRole =
-      roleList.isEmpty() ? "Semua Jabatan" : roleList[currentRoleIndex];
-  roleList = newRoleList;
+  QString currentRole = ui->filterStaffRole->currentText();
+  if (currentRole.isEmpty()) currentRole = "Semua Jabatan";
 
-  int newIndex = -1;
-  for (int i = 0; i < roleList.size(); ++i) {
-    if (roleList[i].compare(currentRole, Qt::CaseInsensitive) == 0) {
-      newIndex = i;
-      break;
-    }
-  }
-  currentRoleIndex = (newIndex != -1) ? newIndex : 0;
-
-  if (lblCurrentRole && !roleList.isEmpty()) {
-    lblCurrentRole->setText("JABATAN: " + roleList[currentRoleIndex].toUpper());
+  if (newRoleList != roleList) {
+    roleList = newRoleList;
+    ui->filterStaffRole->blockSignals(true);
+    ui->filterStaffRole->clear();
+    ui->filterStaffRole->addItems(roleList);
+    int idx = ui->filterStaffRole->findText(currentRole, Qt::MatchFixedString);
+    ui->filterStaffRole->setCurrentIndex(idx != -1 ? idx : 0);
+    ui->filterStaffRole->blockSignals(false);
   }
 
-  QString filterRole =
-      roleList.isEmpty() ? "Semua Jabatan" : roleList[currentRoleIndex];
+  QString filterRole = ui->filterStaffRole->currentText();
 
   std::vector<Staff *> filteredStaffs;
   QString onDutyText = "Sedang Bertugas: ";
   int dutyCount = 0;
 
   for (Staff *s : allStaffs) {
-    // Collect global on-duty status regardless of filter
     if (s->onDuty) {
-      if (dutyCount > 0)
-        onDutyText += ", ";
+      if (dutyCount > 0) onDutyText += ", ";
       onDutyText += QString("%1 (%2)").arg(QString::fromStdString(s->name),
                                            QString::fromStdString(s->role));
       dutyCount++;
     }
-
-    // Apply filter for the table
     if (filterRole == "Semua Jabatan" ||
         QString::fromStdString(s->role) == filterRole) {
       filteredStaffs.push_back(s);
     }
   }
 
-  if (dutyCount == 0)
-    onDutyText += "-";
+  if (dutyCount == 0) onDutyText += "-";
   ui->lblOnDuty->setText(onDutyText);
 
   ui->staffTable->setRowCount((int)filteredStaffs.size());
   for (int i = 0; i < (int)filteredStaffs.size(); i++) {
     Staff *s = filteredStaffs[i];
-    ui->staffTable->setItem(i, 0,
-                            new QTableWidgetItem(QString::number(s->staffId)));
-    ui->staffTable->setItem(
-        i, 1, new QTableWidgetItem(QString::fromStdString(s->name)));
-    ui->staffTable->setItem(
-        i, 2, new QTableWidgetItem(QString::fromStdString(s->role)));
-    auto *status =
-        new QTableWidgetItem(s->onDuty ? "✅ Bertugas" : "💤 Istirahat");
+    ui->staffTable->setItem(i, 0, new QTableWidgetItem(QString::number(s->staffId)));
+    ui->staffTable->setItem(i, 1, new QTableWidgetItem(QString::fromStdString(s->name)));
+    ui->staffTable->setItem(i, 2, new QTableWidgetItem(QString::fromStdString(s->role)));
+    auto *status = new QTableWidgetItem(s->onDuty ? "✅ Bertugas" : "💤 Istirahat");
     status->setForeground(s->onDuty ? Qt::darkGreen : Qt::gray);
     ui->staffTable->setItem(i, 3, status);
   }
@@ -2186,8 +2120,8 @@ void MainWindow::onRotateShift() {
     if (staffList->getSize() == 0)
       throw RestaurantException("Tidak ada staf terdaftar!");
 
-    QString filterRole =
-        roleList.isEmpty() ? "Semua Jabatan" : roleList[currentRoleIndex];
+    QString filterRole = ui->filterStaffRole->currentText();
+        if (filterRole.isEmpty()) filterRole = "Semua Jabatan";
     int maxOnDuty = 1;
     std::string roleStr = filterRole.toStdString();
     if (roleQuotas.count(roleStr)) {
@@ -3082,6 +3016,18 @@ void MainWindow::setupCreditTab() {
   ui->creditScrollArea->setStyleSheet(
       "QScrollArea{background:transparent;border:none;}"
       "QWidget#creditScrollContent{background:transparent;}");
+
+    QList<QLabel *> avatarLabels = {ui->lblAvatar1, ui->lblAvatar2, ui->lblAvatar3,
+                                    ui->lblAvatar4, ui->lblAvatar5};
+    for (QLabel *lbl : avatarLabels) {
+        if (lbl) {
+        QFont f = lbl->font();
+        f.setPointSize(56);
+        lbl->setFont(f);
+        lbl->setMinimumSize(110, 110);
+        lbl->setMaximumSize(110, 110);
+        }
+    }
 }
 
 // ============================================================
