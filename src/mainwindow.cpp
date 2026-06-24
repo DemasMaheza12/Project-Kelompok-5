@@ -2434,8 +2434,9 @@ void MainWindow::refreshInventarisTable() {
 
   for (int i = 0; i < (int)items.size(); i++) {
     MenuItem *m = items[i];
-    bool isMenipis = m->stock <= 3; // Threshold stok menu
-    if (isMenipis)
+    bool isHabis = m->stock <= 0;               // Stok benar-benar habis
+    bool isMenipis = !isHabis && m->stock <= 3; // Menipis tapi belum habis
+    if (isHabis || isMenipis)
       menipis++;
 
     ui->inventarisTable->setItem(i, 0,
@@ -2451,17 +2452,23 @@ void MainWindow::refreshInventarisTable() {
     ui->inventarisTable->setItem(i, 6, new QTableWidgetItem("-"));
     ui->inventarisTable->setItem(i, 7, new QTableWidgetItem("-"));
 
-    auto *statusItem =
-        new QTableWidgetItem(isMenipis ? "⚠️ Menipis" : "✅ Aman");
-    statusItem->setForeground(isMenipis ? QColor(211, 47, 47)
-                                        : QColor(56, 142, 60));
+    QString statusText = isHabis ? "❌ Habis"
+                         : isMenipis ? "⚠️ Menipis"
+                                     : "✅ Aman";
+    QColor statusColor = isHabis ? QColor(183, 28, 28)    // merah tua = habis
+                         : isMenipis ? QColor(211, 47, 47) // merah = menipis
+                                     : QColor(56, 142, 60); // hijau = aman
+
+    auto *statusItem = new QTableWidgetItem(statusText);
+    statusItem->setForeground(statusColor);
     ui->inventarisTable->setItem(i, 8, statusItem);
 
-    if (isMenipis) {
+    if (isHabis || isMenipis) {
+      QColor bg = isHabis ? QColor(255, 205, 210)   // merah muda = habis
+                          : QColor(255, 243, 224);   // oranye muda = menipis
       for (int col = 0; col < 9; col++) {
         if (ui->inventarisTable->item(i, col))
-          ui->inventarisTable->item(i, col)->setBackground(
-              QColor(255, 243, 224));
+          ui->inventarisTable->item(i, col)->setBackground(bg);
       }
     }
   }
@@ -2635,34 +2642,52 @@ void MainWindow::onHapusStok() {
 
 void MainWindow::onCekStokMinim() {
   auto items = menuList->getAll();
+  std::vector<MenuItem *> habis;
   std::vector<MenuItem *> menipis;
   for (auto *m : items) {
-    if (m->stock <= 3) {
+    if (m->stock <= 0) {
+      habis.push_back(m);
+    } else if (m->stock <= 3) {
       menipis.push_back(m);
     }
   }
 
-  if (menipis.empty()) {
+  if (habis.empty() && menipis.empty()) {
     QMessageBox::information(this, "Stok Aman",
                              "✅ Semua stok menu dalam kondisi aman!");
     addLog("✅ Cek stok: semua menu aman.");
     return;
   }
 
-  QString msg =
-      QString("⚠ PERINGATAN: %1 menu stoknya menipis!\n\n").arg(menipis.size());
-  for (auto *m : menipis)
-    msg += QString("• %1: %2 porsi (min: 3)\n")
-               .arg(QString::fromStdString(m->name))
-               .arg(m->stock);
+  QString msg;
+  if (!habis.empty()) {
+    msg += QString("❌ STOK HABIS: %1 menu!\n\n").arg(habis.size());
+    for (auto *m : habis)
+      msg += QString("• %1: %2 porsi\n")
+                 .arg(QString::fromStdString(m->name))
+                 .arg(m->stock);
+    msg += "\n";
+  }
+  if (!menipis.empty()) {
+    msg += QString("⚠ STOK MENIPIS: %1 menu!\n\n").arg(menipis.size());
+    for (auto *m : menipis)
+      msg += QString("• %1: %2 porsi (min: 3)\n")
+                 .arg(QString::fromStdString(m->name))
+                 .arg(m->stock);
+  }
 
-  QMessageBox::warning(this, "Stok Menipis!", msg);
-  addLog(QString("⚠ Cek stok: %1 menu menipis!").arg(menipis.size()));
+  QMessageBox::warning(this, "Peringatan Stok!", msg);
+  addLog(QString("⚠ Cek stok: %1 menu habis, %2 menu menipis!")
+             .arg(habis.size())
+             .arg(menipis.size()));
 
-  // Highlight baris menipis di tabel
+  // Highlight baris habis/menipis di tabel
   for (int i = 0; i < (int)items.size(); i++) {
-    bool isMenipis = items[i]->stock <= 3;
-    QColor bg = isMenipis ? QColor(255, 235, 238) : Qt::white;
+    bool isHabis = items[i]->stock <= 0;
+    bool isMenipis = !isHabis && items[i]->stock <= 3;
+    QColor bg = isHabis ? QColor(255, 205, 210)
+               : isMenipis ? QColor(255, 243, 224)
+                           : Qt::white;
     for (int c = 0; c < ui->inventarisTable->columnCount(); c++) {
       if (ui->inventarisTable->item(i, c))
         ui->inventarisTable->item(i, c)->setBackground(bg);
