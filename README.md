@@ -6,7 +6,7 @@ Aplikasi Sistem Manajemen untuk Restoran berbasis C++ dan Qt6 yang mengimplement
 ---
 
 ## 🛠️Cara Menjalankan Aplikasi
-1. Donwload dan Install `RestaurantSystem_Setup.exe`
+1. Download dan Install `RestaurantSystem_Setup.exe`
 2. Aplikasi siap dijalankan
 
 ---
