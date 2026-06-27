@@ -41,7 +41,6 @@ Ini adalah menu utama untuk melayani pelanggan yang datang.
 
 ---
 
-## 4. Tab Dapur (Status Pesanan)
 Di bagian tengah Tab Order, terdapat **Tabel Daftar Order** yang mengatur alur masakan.
 
 - Setiap pesanan yang baru disubmit akan memiliki status **`pending`**.
@@ -50,7 +49,7 @@ Di bagian tengah Tab Order, terdapat **Tabel Daftar Order** yang mengatur alur m
 
 ---
 
-## 5. Tab Pembayaran (Kasir)
+## 4. Tab Pembayaran (Kasir)
 Ketika pelanggan selesai makan dan ingin membayar tagihan, gunakan menu ini.
 
 1. **Muat Tagihan:** Masukkan **Order ID** pelanggan dan klik **Muat Data Order**. Ringkasan pesanan akan muncul.
@@ -61,7 +60,7 @@ Ketika pelanggan selesai makan dan ingin membayar tagihan, gunakan menu ini.
 
 ---
 
-## 6. Tab Inventaris (Stok Bahan Baku)
+## 5. Tab Inventaris (Stok Bahan Baku)
 Gunakan tab ini untuk mengecek ketersediaan bahan dapur.
 
 - **Tambah Bahan:** Isi Nama, Kategori, Jumlah Stok, Satuan (kg/liter/pcs), Batas Minimum Stok, dan Harga Beli. Klik **Tambah Bahan**.
@@ -70,7 +69,7 @@ Gunakan tab ini untuk mengecek ketersediaan bahan dapur.
 
 ---
 
-## 7. Tab Keuangan (Laporan)
+## 6. Tab Keuangan (Laporan)
 Setiap transaksi yang berhasil dibayar akan masuk ke tab Keuangan.
 
 - **Generate Laporan:** Klik tombol **Generate Laporan** untuk melihat ringkasan pendapatan hari ini, total diskon yang diberikan, dan rincian metode pembayaran yang paling sering digunakan pelanggan.
@@ -78,7 +77,7 @@ Setiap transaksi yang berhasil dibayar akan masuk ke tab Keuangan.
 
 ---
 
-## 8. Fitur Pendukung Lainnya
+## 7. Fitur Pendukung Lainnya
 
 - **Tab Staf:** Untuk menambahkan nama karyawan baru, menghapus, atau merotasi _Shift_ (mengubah siapa yang sedang bertugas hari ini).
 - **Tab Layout Meja:** Menampilkan visualisasi jalur antar meja dalam restoran. Anda bisa mensimulasikan pencarian jalur terpendek (BFS) atau eksplorasi rute (DFS) antar meja.
