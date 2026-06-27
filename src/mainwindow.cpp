@@ -3047,7 +3047,7 @@ void MainWindow::setupCreditTab() {
     for (QLabel *lbl : avatarLabels) {
         if (lbl) {
         QFont f = lbl->font();
-        f.setPointSize(56);
+        lbl->setStyleSheet("font-size: 80px;");
         lbl->setFont(f);
         lbl->setMinimumSize(110, 110);
         lbl->setMaximumSize(110, 110);
