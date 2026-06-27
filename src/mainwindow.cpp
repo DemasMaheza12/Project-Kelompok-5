@@ -672,6 +672,8 @@ void MainWindow::setupInitialData() {
 
   // Setup tab Credits
   setupCreditTab();
+
+  ui->tabWidget->setCurrentIndex(0);
 }
 
 // ============================================================
